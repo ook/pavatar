@@ -24,8 +24,8 @@ module Pavatar
     attr_accessor :exceptions
     attr_accessor :debug
 
-    class < self
-      def get_pavatar(url, *options = {})
+    class << self
+      def get_pavatar(url, options = {})
         # initialize instance
         pavatar = new
         pavatar.debug = !!options[:debug]
@@ -36,6 +36,7 @@ module Pavatar
 
         # fetching
         pavatar.autodiscover
+        pavatar
       end
     end
 
@@ -56,7 +57,7 @@ module Pavatar
     def strictly_valid?
       valid_weight? && valid_dimensions? && valid_content_type?
     end
-    alias :valid?, :stricly_valid?
+    alias :valid? :strictly_valid?
 
     # Validate as describe in Spec 2.a. Technical definition   
     def valid_weight?
