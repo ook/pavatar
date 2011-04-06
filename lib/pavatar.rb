@@ -1,6 +1,9 @@
 require 'net/http'
 
 module Pavatar
+  SPEC_VERSION = '0.3.0'
+  SPEC_URL     = 'http://pavatar.com/spec/'
+
   class Exception < ::Exception
      attr_accessor :pavatar
      def initialize(pavatar)
@@ -42,15 +45,19 @@ module Pavatar
 
     def url=(url)
       @url = URI.parse(url)
+
       if !@url.is_a?(URI::HTTP)
         @exceptions << BadUrl.new(self)
         @url = nil
+      else
+        @url.path = '/' if '' == @url.path
       end
+
       @url
     end
 
     def url
-      @url.to_s
+      @url
     end
 
     # Validate as describe in Spec 2.a. Technical definition   
@@ -77,7 +84,8 @@ module Pavatar
 
     def autodiscover
       return nil unless valid?
-      Net::HTTP.start(url)
+      response = Net::HTTP.start(@url.host) { |http| http.head(@url.path) }
+      response['X-Pavatar']
     end
   end
 end
