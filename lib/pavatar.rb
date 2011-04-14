@@ -60,6 +60,23 @@ module Pavatar
       @url
     end
 
+    def image_url=(url)
+      @image_url = URI.parse(url)
+
+      if !@image_url.is_a?(URI::HTTP)
+        @exceptions << BadUrl.new(self)
+        @image_url = nil
+      else
+        @image_url.path = '/' if '' == @image_url.path
+      end
+
+      @image_url
+    end
+
+    def image_url
+      @image_url
+    end
+
     # Validate as describe in Spec 2.a. Technical definition   
     def strictly_valid?
       valid_weight? && valid_dimensions? && valid_content_type?
@@ -76,6 +93,7 @@ module Pavatar
 
     # Validate as describe in Spec 2.a. Technical definition   
     def valid_url?
+      true
     end
 
     # Validate as describe in Spec 2.a. Technical definition   
@@ -83,9 +101,15 @@ module Pavatar
     end
 
     def autodiscover
-      return nil unless valid?
-      response = Net::HTTP.start(@url.host) { |http| http.head(@url.path) }
-      response['X-Pavatar']
+      return nil unless @exceptions.empty?
+      @response = Net::HTTP.start(@url.host) { |http| http.head(@url.path) }
+      case @response.code
+      when "200"
+        self.image_url = @response['X-Pavatar']
+      when "403"
+        self.image_url = nil
+      end
+      self.image_url
     end
   end
 end
