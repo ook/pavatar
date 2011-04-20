@@ -1,8 +1,13 @@
 require 'net/http'
+require 'rubygems'
+require 'hpricot'
 
 module Pavatar
   SPEC_VERSION = '0.3.0'
   SPEC_URL     = 'http://pavatar.com/spec/'
+
+  # Order honors specifications
+  AUTODISCOVER_METHOD = ['http_header', 'http_link']
 
   class Exception < ::Exception
      attr_accessor :pavatar
@@ -100,8 +105,7 @@ module Pavatar
     def valid_content_type?
     end
 
-    def autodiscover
-      return nil unless @exceptions.empty?
+    def autodiscover_http_header
       @response = Net::HTTP.start(@url.host) { |http| http.head(@url.path) }
       case @response.code
       when "200"
@@ -109,6 +113,22 @@ module Pavatar
       when "403"
         self.image_url = nil
       end
+    end
+
+    def autodiscover_http_link
+      @response = Net::HTTP.start(@url.host) { |http| http.get(@url.path) }
+      case @response.code
+      when "200"
+        doc = Hpricot(@response.body)
+        self.image_url = (doc/'link[@rel="pavatar"]').try('attr', 'href')
+      when "403"
+        self.image_url = nil
+      end
+    end
+
+    def autodiscover
+      return nil unless @exceptions.empty?
+      AUTODISCOVER_METHOD.each { |meth| send("autodiscover_#{meth}") if self.image_url.nil? }
       self.image_url
     end
   end
