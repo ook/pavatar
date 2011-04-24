@@ -14,6 +14,10 @@ module Pavatar
      def initialize(pavatar)
        self.pavatar = pavatar
      end
+
+     def to_s
+       message
+     end
   end
 
   class Refused < Exception
