@@ -114,13 +114,9 @@ module Pavatar
 
     def autodiscover_http_header
       @response = Net::HTTP.start(@url.host) { |http| http.head(@url.path) }
-      case @response.code
-      when "200"
+      if '200' == @response.code
         self.image_url = @response['X-Pavatar']
         @autodiscover_blocked = true
-      when "403"
-        self.image_url = nil
-        # Specification hole: 403 doesn't mean blocking autodiscover
       end
       if 'none' == self.image_url
         self.image_url = nil
@@ -136,8 +132,6 @@ module Pavatar
         doc = Hpricot(@response.body)
         self.image_url = (doc/'link[@rel="pavatar"]').try('attr', 'href')
         @autodiscover_blocked = true
-      when "403"
-        self.image_url = nil
       end
       if self.image_url = 'none'
         @self.image_url = nil
@@ -159,7 +153,11 @@ module Pavatar
     def autodiscover
       return nil unless @exceptions.empty?
       @autodiscover_blocked = false
-      AUTODISCOVER_METHOD.each { |meth| @discover_method = meth; send("autodiscover_#{meth}") unless @autodiscover_blocked }
+      AUTODISCOVER_METHOD.each do |meth| 
+        @discover_method = meth 
+        send("autodiscover_#{meth}") 
+        break if @autodiscover_blocked
+      end
       self.image_url
     end
   end

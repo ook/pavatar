@@ -20,9 +20,13 @@ EOB
   end
 
   def test_autodiscover_http_header
-    assert_equal OK_PNG_URL, Pavatar::Consumer.get_pavatar('http://header.example.com').image_url.to_s, 'Valid URL with valid URL in X-Pavatar header must be recognize'
-    assert_nil Pavatar::Consumer.get_pavatar('http://none-header.example.com').image_url, 'Valid URL with none in X-Pavatar header must be recognize'
-    assert_nil Pavatar::Consumer.get_pavatar('http://none-header.example.com').image_url, 'Valid URL with none in X-Pavatar header must be recognize'
+    assert_equal OK_PNG_URL, Pavatar::Consumer.get_pavatar('http://header.example.com').image_url.to_s, 'Valid URL with valid URL in X-Pavatar header must be recognized'
+    pavatar = Pavatar::Consumer.get_pavatar('http://none-header.example.com')
+    assert_nil pavatar.image_url, 'Valid provider URL with none in X-Pavatar header must be recognized'
+    assert_equal 'http_header', pavatar.discover_method, 'Valid provider URL with none in X-Pavatar MUST stop at http_header method'
+    pavatar = Pavatar::Consumer.get_pavatar('http://no-header.example.com')
+    assert_nil pavatar.image_url, 'Valid provider URL with no X-Pavatar header must be recognized'
+    assert_not_equal 'http_header', pavatar.image_url, 'Valid provider URL with no X-Pavatar header MUST NOT stop at http_header method'
   end
 
 end
