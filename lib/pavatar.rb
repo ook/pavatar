@@ -7,7 +7,7 @@ module Pavatar
   SPEC_URL     = 'http://pavatar.com/spec/'
 
   # Order honors specifications
-  AUTODISCOVER_METHOD = ['http_header', 'http_link']
+  AUTODISCOVER_METHOD = ['http_header', 'http_link', 'direct_url']
 
   class Exception < ::Exception
      attr_accessor :pavatar
@@ -18,7 +18,7 @@ module Pavatar
 
   class Refused < Exception
     def message
-      'URL explicitly refused Pavatar (spec 2.b.)'
+      "URL explicitly refused Pavatar (spec 2.b.) when autodiscovering via #{discover_method} on given #{pavatar.url.inspect}"
     end
   end
 
@@ -31,6 +31,7 @@ module Pavatar
   class Consumer
     attr_accessor :exceptions
     attr_accessor :debug
+    attr_accessor :discover_method
 
     class << self
       def get_pavatar(url, options = {})
@@ -66,7 +67,9 @@ module Pavatar
     end
 
     def image_url=(url)
-      @image_url = URI.parse(url)
+      return (@image_url = nil) if url.nil?
+
+      @image_url = URI.parse(url) rescue nil
 
       if !@image_url.is_a?(URI::HTTP)
         @exceptions << BadUrl.new(self)
@@ -110,9 +113,16 @@ module Pavatar
       case @response.code
       when "200"
         self.image_url = @response['X-Pavatar']
+        @autodiscover_blocked = true
       when "403"
         self.image_url = nil
+        # Specification hole: 403 doesn't mean blocking autodiscover
       end
+      if 'none' == self.image_url
+        self.image_url = nil
+        @exceptions << Refused.new(self)
+        @autodiscover_blocked = true
+      end  
     end
 
     def autodiscover_http_link
@@ -121,14 +131,31 @@ module Pavatar
       when "200"
         doc = Hpricot(@response.body)
         self.image_url = (doc/'link[@rel="pavatar"]').try('attr', 'href')
+        @autodiscover_blocked = true
       when "403"
         self.image_url = nil
+      end
+      if self.image_url = 'none'
+        @self.image_url = nil
+        @exceptions << Refused.new(self)
+        @autodiscover_blocked = true
+      end  
+    end
+
+    def autodiscover_direct_url
+      @url.path = '/pavatar.png'
+      @response = Net::HTTP.start(@url.host) { |http| http.head(@url.path) }
+      case @response.code
+      when '200'
+        self.image_url = @url.to_s
+        @autodiscover_blocked = true
       end
     end
 
     def autodiscover
       return nil unless @exceptions.empty?
-      AUTODISCOVER_METHOD.each { |meth| send("autodiscover_#{meth}") if self.image_url.nil? }
+      @autodiscover_blocked = false
+      AUTODISCOVER_METHOD.each { |meth| @discover_method = meth; send("autodiscover_#{meth}") unless @autodiscover_blocked }
       self.image_url
     end
   end

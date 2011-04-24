@@ -19,9 +19,12 @@ EOB
     assert_equal '/', Pavatar::Consumer.get_pavatar('http://header.example.com').url.path, 'Valid URL with no path must return / as path'
   end
 
-  def test_autodiscover
+  def test_autodiscover_http_header
     assert_equal OK_PNG_URL, Pavatar::Consumer.get_pavatar('http://header.example.com').image_url.to_s, 'Valid URL with valid URL in X-Pavatar header must be recognize'
+    assert_nil Pavatar::Consumer.get_pavatar('http://none-header.example.com').image_url, 'Valid URL with none in X-Pavatar header must be recognize'
+    assert_nil Pavatar::Consumer.get_pavatar('http://none-header.example.com').image_url, 'Valid URL with none in X-Pavatar header must be recognize'
   end
+
 end
 
 class WebFaker
@@ -30,6 +33,8 @@ class WebFaker
     def setup
       @conf_done ||= begin
         FakeWeb.register_uri(:any, "http://header.example.com/", :body => PavatarTest::ALL_OK_METHODS_EXAMPLE_COM, "X-Pavatar" => 'http://example.com/good_pavatar.png' )
+        FakeWeb.register_uri(:any, "http://no-header.example.com/", :body => PavatarTest::ALL_OK_METHODS_EXAMPLE_COM)
+        FakeWeb.register_uri(:any, "http://none-header.example.com/", :body => PavatarTest::ALL_OK_METHODS_EXAMPLE_COM, "X-Pavatar" => 'none' )
         FakeWeb.allow_net_connect = false
         true
       end
