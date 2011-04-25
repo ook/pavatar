@@ -32,6 +32,13 @@ module Pavatar
     end
   end
 
+  class NoPavatar < Exception
+    def message
+      "No Pavatar was found on the given URL (#{pavatar.url.inspect})"
+    end
+  end
+
+
   class Consumer
     attr_accessor :exceptions
     attr_accessor :debug
@@ -158,6 +165,7 @@ module Pavatar
         send("autodiscover_#{meth}") 
         break if @autodiscover_blocked
       end
+      @exceptions << NoPavatar.new(self) unless self.image_url
       self.image_url
     end
   end

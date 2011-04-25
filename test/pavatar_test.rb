@@ -9,6 +9,9 @@ class PavatarTest < Test::Unit::TestCase
   ALL_OK_METHODS_EXAMPLE_COM = <<EOB
   <html><head><link rel="pavatar" href="#{OK_PNG_URL}"/></head><body><p>42*Piou.</p></body></html> 
 EOB
+  NO_PAVATAR_EXAMPLE_COM = <<EOB
+  <html><head></head><body><p>42*Piou. Pavatar? Never heard.</p></body></html> 
+EOB
 
   def setup
     WebFaker.setup
@@ -27,6 +30,9 @@ EOB
     pavatar = Pavatar::Consumer.get_pavatar('http://no-header.example.com')
     assert_nil pavatar.image_url, 'Valid provider URL with no X-Pavatar header must be recognized'
     assert_not_equal 'http_header', pavatar.image_url, 'Valid provider URL with no X-Pavatar header MUST NOT stop at http_header method'
+    pavatar = Pavatar::Consumer.get_pavatar('http://nopavataratall.example.com')
+    assert_nil pavatar.image_url, 'Invalid pavatar provider (valid URL, but not pavatar there) MUST let image_url to nil'
+    assert_equal Pavatar::NoPavatar, pavatar.exceptions[-1].class, 'Invalid pavatar provider (valid URL, but not pavatar there) MUST let a NoPavatar message in the pavatar exceptions list'
   end
 
 end
@@ -36,6 +42,7 @@ class WebFaker
   class << self
     def setup
       @conf_done ||= begin
+        FakeWeb.register_uri(:any, "http://nopavataratall.example.com/", :body => PavatarTest::NO_PAVATAR_EXAMPLE_COM)
         FakeWeb.register_uri(:any, "http://header.example.com/", :body => PavatarTest::ALL_OK_METHODS_EXAMPLE_COM, "X-Pavatar" => 'http://example.com/good_pavatar.png' )
         FakeWeb.register_uri(:any, "http://no-header.example.com/", :body => PavatarTest::ALL_OK_METHODS_EXAMPLE_COM)
         FakeWeb.register_uri(:any, "http://none-header.example.com/", :body => PavatarTest::ALL_OK_METHODS_EXAMPLE_COM, "X-Pavatar" => 'none' )
