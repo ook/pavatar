@@ -134,17 +134,17 @@ module Pavatar
 
     def autodiscover_http_link
       @response = Net::HTTP.start(@url.host) { |http| http.get(@url.path) }
-      case @response.code
-      when "200"
+      if '200' ==  @response.code
         doc = Hpricot(@response.body)
-        self.image_url = (doc/'link[@rel="pavatar"]').try('attr', 'href')
+        pavatar_link = (doc/'link[@rel="pavatar"]').try('attr', 'href')
         @autodiscover_blocked = true
+        if 'none' == pavatar_link
+          @exceptions << Refused.new(self)
+          self.image_url = nil
+        else
+          self.image_url = pavatar_link
+        end
       end
-      if self.image_url = 'none'
-        @self.image_url = nil
-        @exceptions << Refused.new(self)
-        @autodiscover_blocked = true
-      end  
     end
 
     def autodiscover_direct_url
