@@ -46,6 +46,9 @@ EOB
     pavatar = Pavatar::Consumer.get_pavatar('http://valid-http-link.example.com')
     assert_equal OK_PNG_URL, pavatar.image_url.to_s, 'Valid URL with valid URL in link element must be recognized'
     assert_equal 'link_element', pavatar.discover_method, 'Valid provider URL with no X-Pavatar header but valid link element MUST stop at link_element method'
+
+    pavatar = Pavatar::Consumer.get_pavatar('http://invalid-http-link.example.com')
+    assert_equal false,  pavatar.valid_url?, 'Valid provider URL with no X-Pavatar header but invalid link element MUST NOT stop at link_element method'
   end
 
 end

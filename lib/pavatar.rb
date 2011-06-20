@@ -113,7 +113,7 @@ module Pavatar
 
     # Validate as describe in Spec 2.a. Technical definition   
     def valid_url?
-      true
+      self.image_url.is_a?(URI::HTTP)
     end
 
     # Validate as describe in Spec 2.a. Technical definition   
