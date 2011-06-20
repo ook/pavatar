@@ -7,7 +7,7 @@ module Pavatar
   SPEC_URL     = 'http://pavatar.com/spec/'
 
   # Order honors specifications
-  AUTODISCOVER_METHOD = ['http_header', 'http_link', 'direct_url']
+  AUTODISCOVER_METHOD = ['http_header', 'link_element', 'direct_url']
 
   class Exception < ::Exception
      attr_accessor :pavatar
@@ -79,6 +79,7 @@ module Pavatar
 
     def image_url=(url)
       return (@image_url = nil) if url.nil?
+      return (@image_url = 'none') if /^none$/i.match(url)
 
       @image_url = URI.parse(url) rescue nil
 
@@ -123,26 +124,29 @@ module Pavatar
       @response = Net::HTTP.start(@url.host) { |http| http.head(@url.path) }
       if '200' == @response.code
         self.image_url = @response['X-Pavatar']
-        @autodiscover_blocked = true
+        if 'none' == self.image_url
+          self.image_url = nil
+          @exceptions << Refused.new(self)
+          @autodiscover_blocked = true
+        else
+          @autodiscover_blocked = true if self.image_url
+        end  
       end
-      if 'none' == self.image_url
-        self.image_url = nil
-        @exceptions << Refused.new(self)
-        @autodiscover_blocked = true
-      end  
     end
 
-    def autodiscover_http_link
+    def autodiscover_link_element
       @response = Net::HTTP.start(@url.host) { |http| http.get(@url.path) }
       if '200' ==  @response.code
         doc = Hpricot(@response.body)
-        pavatar_link = (doc/'link[@rel="pavatar"]').try('attr', 'href')
-        @autodiscover_blocked = true
-        if 'none' == pavatar_link
+        pavatar_link = (doc/'link[@rel="pavatar"]')
+        pavatar_href = pavatar_link.attr('href') unless pavatar_link.empty?
+        if 'none' == pavatar_href
           @exceptions << Refused.new(self)
           self.image_url = nil
+          @autodiscover_blocked = true
         else
-          self.image_url = pavatar_link
+          self.image_url = pavatar_href
+          @autodiscover_blocked = true # Can't ensure the image_url is valid without a HEAD request, so we delegate that for later
         end
       end
     end
